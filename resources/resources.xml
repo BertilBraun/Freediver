@@ -1,0 +1,62 @@
+<resources>
+    <strings xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
+        <string id="AppName">Freediver</string>
+
+        <!-- Record/timeline field -->
+        <string id="depth_label">Depth</string>
+        <string id="depth_chart_title">Depth</string>
+        <string id="depth_units">m</string>
+
+        <!-- Helper record field (not charted) -->
+        <string id="under_label">Underwater</string>
+        <string id="under_units"></string> <!-- can be empty -->
+
+        <!-- Session summary fields -->
+        <string id="maxdepth_label">Max Depth</string>
+        <string id="maxdepth_units">m</string>
+
+        <string id="longest_label">Longest Dive</string>
+        <string id="longest_units">s</string>
+    </strings>
+
+    <fitContributions>
+        <!-- id=0: timeline graph -->
+        <fitField
+            id="0"
+            displayInChart="true"
+            sortOrder="0"
+            precision="1"
+            chartTitle="@Strings.depth_chart_title"
+            dataLabel="@Strings.depth_label"
+            unitLabel="@Strings.depth_units"
+            fillColor="#0080FF" />
+
+        <!-- id=1: helper flag (no chart) -->
+        <fitField
+            id="1"
+            displayInChart="false"
+            sortOrder="1"
+            precision="0"
+            dataLabel="@Strings.under_label"
+            unitLabel="@Strings.under_units" />
+
+        <!-- id=2: session summary (Max Depth) -->
+        <fitField
+            id="2"
+            displayInActivitySummary="true"
+            sortOrder="2"
+            precision="1"
+            dataLabel="@Strings.maxdepth_label"
+            unitLabel="@Strings.maxdepth_units" />
+
+        <!-- id=3: session summary (Longest Dive) -->
+        <fitField
+            id="3"
+            displayInActivitySummary="true"
+            sortOrder="3"
+            precision="0"
+            dataLabel="@Strings.longest_label"
+            unitLabel="@Strings.longest_units" />
+    </fitContributions>
+</resources>

@@ -1,0 +1,13 @@
+<svg width="36" height="36" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+  <g fill="currentColor">
+    <!-- Big bubble -->
+    <circle cx="20" cy="20" r="8"></circle>
+    <circle cx="17.5" cy="17.5" r="2.2" fill="#fff" opacity="0.5"></circle>
+    <!-- Medium bubble -->
+    <circle cx="10" cy="14" r="4.2"></circle>
+    <circle cx="8.7" cy="12.8" r="1.4" fill="#fff" opacity="0.5"></circle>
+    <!-- Small bubbles -->
+    <circle cx="26.5" cy="10.5" r="2.6"></circle>
+    <circle cx="28.8" cy="7.8" r="1.2" fill="#fff" opacity="0.6"></circle>
+  </g>
+</svg>
