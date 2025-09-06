@@ -5,6 +5,8 @@ A personal freediving logger for Garmin watches that samples barometric pressure
 > ⚠️ **Safety disclaimer**
 > This is **not** a dive computer and must not be used for dive planning or safety-critical decisions. Intended for shallow, recreational use only.
 
+![App Screenshot](documentation/app_screenshot.png)
+
 ---
 
 ## Features
