@@ -8,6 +8,7 @@ using Toybox.FitContributor as Fit;
 using Toybox.ActivityRecording as AR;
 using Toybox.Graphics as GR;
 using Toybox.Lang as Lang;
+using Toybox.Time as Time;
 
 const G = 9.80665; // m/s^2
 const RHO = 1025.0; // seawater density; change to 1000 for fresh
@@ -80,7 +81,23 @@ class FreediverApp extends App.AppBase {
     view._underRecField = _underRecField;
     view._maxDepthSessField = _maxDepthSessField;
     view._longestDiveSessField = _longestDiveSessField;
-    return [view];
+
+    var delegate = new MyInputDelegate(view);
+    return [view, delegate];
+  }
+}
+
+class MyInputDelegate extends Ui.InputDelegate {
+  var _view;
+
+  function initialize(view) {
+    Ui.InputDelegate.initialize();
+    _view = view;
+  }
+
+  function onKey(keyEvent) {
+    _view.onKey(keyEvent);
+    return true;
   }
 }
 
@@ -89,10 +106,13 @@ class FreediverView extends Ui.View {
   var _p0 = null; // surface pressure (Pa)
   var _depth = 0.0;
   var _maxDepth = 0.0;
-  var _lastDepth = 0.0; // if depth is > 1m and the last depth is < 1m, then it's a new dive
-  var _lastDiveDepth = 0.0;
+  var _lastDepth = 0.0; // last smoothed depth sample
+  var _lastDiveDepth = 0.0; // last completed dive's max depth
+  var _lastDiveDuration_s = 0; // last completed dive's duration
+  var _currentDiveMaxDepth = 0.0; // running max depth for current dive
 
   var _sessionStartMs = 0;
+  var _page = 0; // 0: current/last; 1: session max + clock
 
   // Dive state
   var _diving = false;
@@ -106,6 +126,8 @@ class FreediverView extends Ui.View {
 
   var _maxDepthSessField; // MESG_TYPE_SESSION (summary)
   var _longestDiveSessField; // MESG_TYPE_SESSION (summary)
+
+  var _inputDelegate;
 
   function initialize() {
     Ui.View.initialize();
@@ -151,8 +173,20 @@ class FreediverView extends Ui.View {
       _longestDive_s = 0;
       _lastDepth = 0.0;
       _lastDiveDepth = 0.0;
-      _sessionStartMs = 0;
+      _lastDiveDuration_s = 0;
+      _currentDiveMaxDepth = 0.0;
+      _sessionStartMs = Sys.getTimer();
+      _page = 0;
       return true;
+    }
+
+    // UP/DOWN to switch pages
+    if (evt.getType() == Ui.CLICK_TYPE_RELEASE) {
+      if (evt.getKey() == Ui.KEY_UP || evt.getKey() == Ui.KEY_DOWN) {
+        _page = (_page + 1) % 2;
+        Ui.requestUpdate();
+        return true;
+      }
     }
     return false;
   }
@@ -190,13 +224,12 @@ class FreediverView extends Ui.View {
         _maxDepthSessField.setData(_maxDepth);
       }
     }
+    // Track current dive max depth separately
     if (_depth > START_THRESH_M && _lastDepth < START_THRESH_M) {
-      _lastDiveDepth = _depth; // start of dive
+      // Start of a dive will be handled in state machine below, ensure we seed current max
+      _currentDiveMaxDepth = _depth;
     }
     _lastDepth = _depth;
-    if (_depth > _lastDiveDepth) {
-      _lastDiveDepth = _depth; // continuously update the last dive depth
-    }
 
     var now = Sys.getTimer();
 
@@ -205,15 +238,23 @@ class FreediverView extends Ui.View {
       _diving = true;
       _diveStartMs = now;
       _diveEndCandidateMs = null;
+      _currentDiveMaxDepth = _depth;
     } else if (_diving) {
+      if (_depth > _currentDiveMaxDepth) {
+        _currentDiveMaxDepth = _depth;
+      }
       if (_depth <= END_THRESH_M) {
         if (_diveEndCandidateMs == null) {
           _diveEndCandidateMs = now;
         } else if (now - _diveEndCandidateMs >= END_HOLD_MS) {
           // End the dive
           _diving = false;
+          var endedDur_s = ((now - _diveStartMs) / 1000).toNumber();
+          _lastDiveDuration_s = endedDur_s;
+          _lastDiveDepth = _currentDiveMaxDepth;
           _updateLongestDive();
           _diveEndCandidateMs = null;
+          _currentDiveMaxDepth = 0.0;
         }
       } else {
         _diveEndCandidateMs = null;
@@ -239,18 +280,42 @@ class FreediverView extends Ui.View {
     var x = dc.getWidth() / 2;
     var y = 24;
 
-    dc.drawText(x, y, GR.FONT_LARGE, "Current: " + _fmtDepth(_depth), GR.TEXT_JUSTIFY_CENTER);
+    if (_page == 0) {
+      // Page 1: Current dive and last dive metrics, footer: session elapsed
+      dc.drawText(x, y, GR.FONT_LARGE, "Current: " + _fmtDepth(_depth), GR.TEXT_JUSTIFY_CENTER);
 
-    // Stats
-    y += 64;
-    dc.drawText(x, y, GR.FONT_SMALL, "Longest: " + _fmtSec(_longestDive_s), GR.TEXT_JUSTIFY_CENTER);
-    y += 24;
-    dc.drawText(x, y, GR.FONT_SMALL, "Max: " + _fmtDepth(_maxDepth), GR.TEXT_JUSTIFY_CENTER);
-    y += 24;
-    dc.drawText(x, y, GR.FONT_SMALL, "Last: " + _fmtDepth(_lastDiveDepth), GR.TEXT_JUSTIFY_CENTER);
-    y += 32;
-    var dur_s = ((Sys.getTimer() - _sessionStartMs) / 1000).toNumber();
-    dc.drawText(x, y, GR.FONT_SMALL, "Total: " + _fmtSec(dur_s), GR.TEXT_JUSTIFY_CENTER);
+      y += 48;
+      var currentDur_s = 0;
+      if (_diving) {
+        currentDur_s = ((Sys.getTimer() - _diveStartMs) / 1000).toNumber();
+      }
+      dc.drawText(x, y, GR.FONT_SMALL, "Dive: " + _fmtSec(currentDur_s), GR.TEXT_JUSTIFY_CENTER);
+
+      y += 24;
+      dc.drawText(x, y, GR.FONT_SMALL, "Last depth: " + _fmtDepth(_lastDiveDepth), GR.TEXT_JUSTIFY_CENTER);
+
+      y += 24;
+      dc.drawText(x, y, GR.FONT_SMALL, "Last dur: " + _fmtSec(_lastDiveDuration_s), GR.TEXT_JUSTIFY_CENTER);
+
+      y += 32;
+      var sess_s = ((Sys.getTimer() - _sessionStartMs) / 1000).toNumber();
+      dc.drawText(x, y, GR.FONT_SMALL, "Total: " + _fmtSec(sess_s), GR.TEXT_JUSTIFY_CENTER);
+    } else {
+      // Page 2: Session maxima, footer: current time (24h)
+      dc.drawText(x, y, GR.FONT_LARGE, "Session Max", GR.TEXT_JUSTIFY_CENTER);
+
+      y += 48;
+      dc.drawText(x, y, GR.FONT_SMALL, "Max depth: " + _fmtDepth(_maxDepth), GR.TEXT_JUSTIFY_CENTER);
+
+      y += 24;
+      dc.drawText(x, y, GR.FONT_SMALL, "Max dur: " + _fmtSec(_longestDive_s), GR.TEXT_JUSTIFY_CENTER);
+
+      y += 64;
+
+      var clockTime = System.getClockTime();
+      var timeString = Lang.format("$1$:$2$", [clockTime.hour, clockTime.min.format("%02d")]);
+      dc.drawText(x, y, GR.FONT_SMALL, timeString, GR.TEXT_JUSTIFY_CENTER);
+    }
   }
 
   function _fmtDepth(d) {
