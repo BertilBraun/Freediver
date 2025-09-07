@@ -20,7 +20,12 @@ A personal freediving logger for Garmin watches that samples barometric pressure
 
   * **MaxDepth\_m**
   * **LongestDive\_s**
-* Simple on-watch display: current depth, longest dive, max depth, last dive peak, session duration
+* Two on-watch pages you can switch with Up/Down:
+
+  * Page 1 (Dive): current depth, current dive duration, last dive depth, last dive duration; footer shows total session time
+  * Page 2 (Session): session max depth and max dive duration; footer shows current time (24h)
+
+* Long-press Back to re-zero surface pressure and reset session stats
 
 ---
 
