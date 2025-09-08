@@ -126,8 +126,6 @@ class FreediverView extends Ui.View {
   var _maxDepthSessField; // MESG_TYPE_SESSION (summary)
   var _longestDiveSessField; // MESG_TYPE_SESSION (summary)
 
-  var _inputDelegate;
-
   function initialize() {
     Ui.View.initialize();
   }
