@@ -96,8 +96,7 @@ class MyInputDelegate extends Ui.InputDelegate {
   }
 
   function onKey(keyEvent) {
-    _view.onKey(keyEvent);
-    return true;
+    return _view.onKey(keyEvent);
   }
 }
 
